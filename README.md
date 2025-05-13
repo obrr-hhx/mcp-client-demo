@@ -6,7 +6,7 @@ This is a demo project for a client using the Model Context Protocol (MCP), desi
 
 - Connect to MCP server
 - Call large language models (LLM) for conversation (in this example, `qwen3-235b-a22b` is used)
-- Support for Tool Calling
+- Support for Custom Tool Calling
 - Streaming response handling
 
 ## Prerequisites
