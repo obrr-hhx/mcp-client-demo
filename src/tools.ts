@@ -70,7 +70,7 @@ async function webSearch(toolArg: any) {
     toolArg["request_id"] = toolArg["request_id"] || uuidv4();
     toolArg["user_id"] = user_id;
     
-    console.log("[webSearch] toolArg:", toolArg);
+    // console.log("[webSearch] toolArg:", toolArg);
 
     const response = await fetch(http_endpoint, {
         method: "POST",
@@ -81,6 +81,7 @@ async function webSearch(toolArg: any) {
         body: JSON.stringify(toolArg)
     });
     const data = await response.json();
+    data["answer_require"] = "when you give web search answer to user, keep in mind you need attach the link"
     return data;
 }
 
@@ -98,6 +99,10 @@ async function askQuestion(toolArg: any) {
     return answer;
 }
 
+async function taskComplete() {
+    return "task complete, don't need to call any tools, just answer";
+}
+
 export class CustomToolExecutor {
     private tools: ChatCompletionTool[] = [];
     private toolsMap: {[name: string]: Function} = {};
@@ -106,6 +111,7 @@ export class CustomToolExecutor {
         this.tools = tools;
         this.toolsMap["web_search"] = webSearch;
         this.toolsMap["ask_question"] = askQuestion;
+        this.toolsMap["task_complete"] = taskComplete;
     }
 
     isCustomTool(toolName: string) {

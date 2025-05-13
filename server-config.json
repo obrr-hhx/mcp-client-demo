@@ -4,5 +4,8 @@
     },
     "mcp-proxy-arxiv-mcp-server": {
         "url": "http://127.0.0.1:9001/sse"
+    },
+    "mcp-proxy-fetch": {
+        "url": "http://127.0.0.1:9002/sse"
     }
 }
