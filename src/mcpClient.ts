@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import { FunctionTool } from "openai/src/resources/responses/responses.js"
+import { ChatCompletionTool } from "openai/resources/chat/completions";
 import { URL } from "url";
 
 export class MCPClient {
@@ -32,7 +32,7 @@ export class MCPClient {
         this.isConnected = true;
     }
     
-    async getTools(): Promise<FunctionTool[]> {
+    async getTools(): Promise<ChatCompletionTool[]> {
         if (!this.isConnected) {
             console.error(`[mcpClient] failed to get tool list when not connected to server`);
             throw new Error("not connected to server");
@@ -40,16 +40,17 @@ export class MCPClient {
         try {
             const toolsResult = await this.client.listTools();
             
-            const tools: FunctionTool[] = toolsResult.tools.map((tool) => {
+            const tools: ChatCompletionTool[] = toolsResult.tools.map((tool) => {
                 return {
                     type: 'function',
-                    strict: true,
-                    name: tool.name,
-                    description: tool.description,
-                    parameters: {
-                        ... tool.inputSchema,
-                        additionalProperties: false
-                    },
+                    function: {
+                        name: tool.name,
+                        description: tool.description,
+                        parameters: {
+                            ... tool.inputSchema,
+                            additionalProperties: false
+                        },
+                    }
                 }
             });
             console.log(`[mcpClient] converted tool number: ${tools.length}`);

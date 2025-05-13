@@ -1,8 +1,8 @@
 import dotenv from "dotenv"
 import OpenAI from 'openai'
-import { FunctionTool, ResponseInput } from "openai/src/resources/responses/responses.js"
+import { ChatCompletionTool } from "openai/resources/chat/completions";
 import { MCPClient } from "./mcpClient.js";
-import { toolCall } from "./tools.js";
+import { toolCall, customTools, CustomToolExecutor } from "./tools.js";
 import configs from "../server-config.json" with { type: "json" }
 
 dotenv.config();
@@ -18,7 +18,8 @@ type SSEServerConfig = {
 
 export class MCPHost {
     private mcps: MCPClient[] = [];
-    private tools: FunctionTool[] = [];
+    private customToolExecutor: CustomToolExecutor;
+    private tools: ChatCompletionTool[] = [];
     private toolsMap: {[name:string]:MCPClient} = {};
 
     private servers: {[name: string]: SSEServerConfig} = configs;
@@ -30,6 +31,7 @@ export class MCPHost {
             apiKey: DASHSCOPE_API_KEY,
             baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1"
         });
+        this.customToolExecutor = new CustomToolExecutor(customTools);
     }
 
     async connectToServers() {
@@ -44,15 +46,15 @@ export class MCPHost {
                     
                     const tools = await mcp.getTools();
                     const map: {[name: string]: MCPClient} = {};
-                    tools.forEach((t) => map[t.name] = mcp);
+                    tools.forEach((t) => map[t.function.name] = mcp);
                     this.tools = [...this.tools, ...tools];
                     this.toolsMap = {...this.toolsMap, ...map};
-                    console.log(`[mcpHost] successfully connected to server ${serverName} and get tools: ${tools.map(({ name }) => name).join(", ")}`);
+                    console.log(`[mcpHost] successfully connected to server ${serverName} and get tools: ${tools.map((t) => t.function.name).join(", ")}`);
                 } catch (err) {
                     console.error(`[mcpHost] failed to connect to server ${serverName}:`, err);
                 }
             }
-            
+            await this.loadCustomTools();
             if (this.mcps.length === 0) {
                 throw new Error("[mcpHost] failed to connect to any server");
             }
@@ -63,24 +65,18 @@ export class MCPHost {
             throw error;
         }
     }
+    async loadCustomTools() {
+        this.tools = [...this.tools, ...customTools];
+        console.log("[mcpHost] custom tools:", customTools.map((t) => t.function.name));
+    }
 
     async getResponse(messages: any[]) {
-        // make FunctionTool to ChatCompletionTool
-        const formattedTools = this.tools.map(tool => ({
-            type: 'function' as const,
-            function: {
-                name: tool.name,
-                description: tool.description || "",
-                parameters: tool.parameters || {}
-            }
-        }));
-
         // use any type to bypass type check error
         const requestOptions: any = {
             model: this.model,
             messages: messages,
             enable_thinking: true,
-            tools: formattedTools,
+            tools: this.tools,
             stream: true,
             parallel_tool_calls: true
         };
@@ -177,8 +173,8 @@ export class MCPHost {
                 let toolArg = JSON.parse(toolCalls[i].args);
                 const mcpClient = this.toolsMap[toolName];
 
-                if(!mcpClient) {
-                    console.warn(`[mcpHost] tool not found: ${toolName}`);
+                if(!mcpClient && !this.customToolExecutor.isCustomTool(toolName)) {
+                    console.log(`[mcpHost] tool's mcp client not found: ${toolName}`);
                     continue;
                 }
 
@@ -187,7 +183,11 @@ export class MCPHost {
                 
                 let result;
                 try {
-                    result = await mcpClient.callTool(toolName, toolArg);
+                    if(this.customToolExecutor.isCustomTool(toolName)){
+                        result = await this.customToolExecutor.executeTool(toolName, toolArg);
+                    }else{
+                        result = await mcpClient.callTool(toolName, toolArg);
+                    }
                 } catch (err: unknown) {
                     console.error(`[mcpHost] tool call failed ${toolName}:`, err);
                     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -246,6 +246,10 @@ export class MCPHost {
 
             try {
                 console.log("\n" + "=".repeat(20) + "LLM Answer after tool call" + "=".repeat(20));
+                messages.push({
+                    role: "user",
+                    content: "pls use user's language to answer the question, if the user's language is not chinese, pls translate the answer to user's language"
+                });
                 const completion = await this.openai.chat.completions.create({
                     model: this.model,
                     messages: messages,

@@ -1,5 +1,8 @@
 {
     "mcp-proxy-filesystem": {
         "url": "http://127.0.0.1:9000/sse"
+    },
+    "mcp-proxy-arxiv-mcp-server": {
+        "url": "http://127.0.0.1:9001/sse"
     }
 }
