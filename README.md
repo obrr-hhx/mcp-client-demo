@@ -19,7 +19,7 @@ This is a demo project for a client using the Model Context Protocol (MCP), desi
 
 ```bash
 # Clone the project
-git clone <repository-url>
+git clone https://github.com/obrr-hhx/mcp-client-demo.git
 cd mcp-client-demo
 
 # Install dependencies
