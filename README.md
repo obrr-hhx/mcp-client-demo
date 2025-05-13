@@ -32,6 +32,7 @@ npm install
 
 ```
 DASHSCOPE_API_KEY=your_dashscope_api_key
+ZHIPU_API_KEY=your_zhipu_api_key # for web search
 ```
 
 2. Configure the server connection (already set in `server-config.json`):
