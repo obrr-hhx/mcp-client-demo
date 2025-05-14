@@ -244,6 +244,10 @@ export class MCPHost {
                     ],
                 }
                 */
+               messages.push({
+                role: "assistant",
+                content: "<think>" + reasoningContent + "</think>" + answerContent,
+               })
                if(assistantToolCallsMessages.length > 0){
                     messages.push({
                         role: "assistant",
